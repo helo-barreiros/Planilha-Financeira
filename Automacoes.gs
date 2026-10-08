@@ -232,7 +232,9 @@ function lerConfig_() {
 
   const cartoes = {};
   const fixas = [];
+  const ativosEMetas = [];
   v.forEach(r => {
+    [CFG.META_NOME, CFG.ATV_NOME].forEach(c => { if (txt(r, c)) ativosEMetas.push(txt(r, c)); });
     const nomeCartao = txt(r, CFG.CART_NOME);
     if (nomeCartao) {
       cartoes[nomeCartao] = {
@@ -262,7 +264,8 @@ function lerConfig_() {
     diaInicio: dia >= 1 && dia <= 28 ? dia : 1,
     cartoes: cartoes,
     listaCartoes: Object.keys(cartoes),
-    fixas: fixas
+    fixas: fixas,
+    ativosEMetas: ativosEMetas
   };
 }
 
@@ -454,6 +457,7 @@ function validarFormulario_(f, cfg) {
   if (!f.cat) faltando.push('Categoria');
   if (f.tipo === 'Despesa' && !f.forma) faltando.push('Forma de pagamento');
   if (!f.conta && f.forma !== 'Crédito') faltando.push('Conta');
+  if (f.tipo === 'Investimento' && !f.ativo) faltando.push('Ativo ou meta');
 
   const erros = [];
   if (faltando.length) erros.push('Preencha: ' + faltando.join(', '));
@@ -489,6 +493,11 @@ function registrarLancamento() {
   try {
     const f = lerFormulario_(sh);
     const ctx = contexto_();
+    // Meta/ativo escolhido como subcategoria (ex.: Metas → Carro) vale como "Ativo ou meta"
+    if (f.tipo === 'Investimento' && !f.ativo) {
+      const nome = ctx.cfg.ativosEMetas.find(x => x.toLowerCase() === f.sub.toLowerCase());
+      if (nome) f.ativo = nome;
+    }
     const erros = validarFormulario_(f, ctx.cfg);
     if (erros.length) {
       mensagem_(sh, '⚠️ ' + erros.join(' • '), false);

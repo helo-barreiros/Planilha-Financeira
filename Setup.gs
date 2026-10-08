@@ -92,6 +92,7 @@ function setup() {
   SpreadsheetApp.flush();
 
   if (cfgNova) montarConfiguracoes_(sh.cfg);
+  else garantirMetas_(sh.cfg);
   montarAuxConfig_(sh.cfg);
   if (bdNovo) montarBancoDeDados_(sh.bd);
   montarLancamentos_(sh.lanc);
@@ -396,30 +397,17 @@ function montarConfiguracoes_(sh) {
       dados: PADRAO_FIXAS },
     { titulo: '📈 Ativos', col: CFG.ATV_NOME,
       cab: ['Ativo', 'Tipo', 'Ticker (GOOGLEFINANCE)', 'Preço manual', 'Preço atual'], dados: PADRAO_ATIVOS },
-    { titulo: '🎯 Metas', col: CFG.META_NOME, cab: ['Meta', 'Valor da meta', 'Já guardado (antes)', 'Prazo'],
-      dados: padraoMetas_() }
+    blocoMetas_(padraoMetas_())
   ];
 
-  blocos.forEach(b => {
-    const w = b.cab.length;
-    const tituloRange = sh.getRange(L - 2, b.col, 1, w);
-    secao_(sh, tituloRange.getA1Notation(), b.titulo);
-    const cab = sh.getRange(L - 1, b.col, 1, w);
-    cab.setValues([b.cab]).setBackground(COR.AMEIXA).setFontColor(COR.BRANCO).setFontWeight('bold')
-      .setFontSize(9).setHorizontalAlignment('center').setWrap(true);
-    zebra_(sh, L, b.col, n, w);
-    if (b.dados.length) {
-      const linhas = b.dados.map(r => r.slice(0, w));
-      sh.getRange(L, b.col, linhas.length, w).setValues(linhas);
-    }
-  });
+  blocos.forEach(b => blocoConfig_(sh, b));
   sh.setRowHeight(L - 1, 34);
 
   // Formatos
   const col = c => sh.getRange(L, c, n, 1);
-  [CFG.CAT_ORC, CFG.CART_LIMITE, CFG.FIXA_VALOR, CFG.ATV_MANUAL, CFG.ATV_PRECO, CFG.META_VALOR, CFG.META_INICIAL]
+  [CFG.CAT_ORC, CFG.CART_LIMITE, CFG.FIXA_VALOR, CFG.ATV_MANUAL, CFG.ATV_PRECO]
     .forEach(c => col(c).setNumberFormat(FORMATO_MOEDA));
-  col(CFG.META_PRAZO).setNumberFormat(FORMATO_DATA);
+  formatarMetas_(sh);
   [CFG.CAT_TIPO, CFG.CART_FECH, CFG.CART_VENC, CFG.FIXA_DIA, CFG.ATV_TIPO]
     .forEach(c => col(c).setHorizontalAlignment('center'));
 
@@ -433,7 +421,53 @@ function montarConfiguracoes_(sh) {
   col(CFG.FIXA_FORMA).setDataValidation(validacaoIntervalo_(col(CFG.FORMA), true));
   col(CFG.FIXA_CARTAO).setDataValidation(validacaoIntervalo_(col(CFG.CART_NOME), true));
   [CFG.CART_FECH, CFG.CART_VENC, CFG.FIXA_DIA].forEach(c => col(c).setDataValidation(dia));
-  col(CFG.META_PRAZO).setDataValidation(SpreadsheetApp.newDataValidation().requireDate().build());
+}
+
+/** Título, cabeçalho, zebra e dados iniciais de uma tabela da aba Configurações. */
+function blocoConfig_(sh, b) {
+  const L = CFG_LINHA_INI;
+  const n = CFG_LINHA_FIM - CFG_LINHA_INI + 1;
+  const w = b.cab.length;
+  secao_(sh, sh.getRange(L - 2, b.col, 1, w).getA1Notation(), b.titulo);
+  sh.getRange(L - 1, b.col, 1, w).setValues([b.cab]).setBackground(COR.AMEIXA).setFontColor(COR.BRANCO)
+    .setFontWeight('bold').setFontSize(9).setHorizontalAlignment('center').setWrap(true);
+  zebra_(sh, L, b.col, n, w);
+  if (b.dados.length) {
+    const linhas = b.dados.map(r => r.slice(0, w));
+    sh.getRange(L, b.col, linhas.length, w).setValues(linhas);
+  }
+}
+
+function blocoMetas_(dados) {
+  return { titulo: '🎯 Metas', col: CFG.META_NOME, cab: ['Meta', 'Valor da meta', 'Já guardado (antes)', 'Prazo'], dados: dados };
+}
+
+function formatarMetas_(sh) {
+  const n = CFG_LINHA_FIM - CFG_LINHA_INI + 1;
+  const col = c => sh.getRange(CFG_LINHA_INI, c, n, 1);
+  [CFG.META_VALOR, CFG.META_INICIAL].forEach(c => col(c).setNumberFormat(FORMATO_MOEDA));
+  col(CFG.META_PRAZO).setNumberFormat(FORMATO_DATA)
+    .setDataValidation(SpreadsheetApp.newDataValidation().requireDate().build());
+}
+
+/**
+ * Planilhas montadas por versões antigas não tinham a tabela de Metas.
+ * Cria a tabela (vazia) sem tocar no resto da aba Configurações.
+ */
+function garantirMetas_(sh) {
+  const L = CFG_LINHA_INI;
+  if (sh.getRange(L - 1, CFG.META_NOME).getValue() === 'Meta') return;
+  const n = CFG_LINHA_FIM - CFG_LINHA_INI + 1;
+  const area = sh.getRange(L - 2, CFG.META_NOME, n + 2, CFG.META_PRAZO - CFG.META_NOME + 1);
+  const ocupada = area.getValues().some(r => r.some(v => v !== ''));
+  if (ocupada) throw new Error('A área da tabela de Metas (colunas AG:AJ) em Configurações já tem conteúdo. ' +
+    'Mova ou apague esse conteúdo e rode "Reconstruir painéis" de novo.');
+
+  [20, 130, 110, 150, 100].forEach((w, i) => sh.setColumnWidth(CFG.META_NOME - 1 + i, w));
+  sh.getRange(1, 2, 2, CFG.META_PRAZO - 1).setBackground(COR.AMEIXA);
+  area.setFontFamily(FONTE).setFontSize(10).setFontColor(COR.TEXTO).setVerticalAlignment('middle');
+  blocoConfig_(sh, blocoMetas_([]));
+  formatarMetas_(sh);
 }
 
 function padraoMetas_() {
@@ -781,9 +815,12 @@ function montarResumo_(sh, shCfg) {
   sh.setRowHeight(29, 30);
   zebra_(sh, 30, 2, 15, 7);
   sh.getRange(30, 7, 15, 2).mergeAcross();
+  // Crédito à vista entra pela data da compra (período do ciclo); parcelas e demais formas, pelo mês de referência
   sh.getRange('B30').setFormula(fx_(
     '=IFERROR(LET(cats,FILTER(LST_CATEGORIAS,CAT_TIPO="Despesa"),' +
-    'v,ARRAYFORMULA(SUMIFS(BD_VALOR,BD_TIPO,"Despesa",BD_MESREF,RES_REF,BD_CAT,cats)),' +
+    'ok,ARRAYFORMULA(IF((BD_FORMA="Crédito")*(BD_PARCELADO<>"Sim"),(BD_DATA>=RES_INICIO)*(BD_DATA<=RES_FIM),' +
+    'BD_MESREF=RES_REF)*(BD_TIPO="Despesa")),' +
+    'v,ARRAYFORMULA(SUMIF(IF(ok,BD_CAT,""),cats,BD_VALOR)),' +
     'ARRAY_CONSTRAIN(SORT(FILTER({cats,v},v>0),2,FALSE),15,2)),{"Sem gastos neste mês",0})'));
   const fCat = [];
   for (let r = 30; r <= 44; r++) {
