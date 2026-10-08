@@ -7,7 +7,6 @@
  * ============================================================
  */
 
-/* ---------- Dados iniciais (editáveis depois na aba Configurações) ---------- */
 
 const PADRAO_CATEGORIAS = [
   ['Salário', 'Receita', ''], ['Renda extra', 'Receita', ''], ['Rendimentos', 'Receita', ''],
