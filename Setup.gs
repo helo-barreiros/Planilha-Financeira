@@ -736,7 +736,10 @@ function montarResumo_(sh, shCfg) {
     S7: 'Sobra livre', T7: '=MAX(0,KPI_SALDO)',
     S9: 'Fixas pendentes', T9: '=SUMIFS(M14:M25,P14:P25,"<>✅ Paga",J14:J25,"<>")',
     S10: 'Compras parceladas ativas',
-    T10: '=IFERROR(COUNTA(UNIQUE(FILTER(BD_GRUPO,BD_PARCELADO="Sim",BD_MESREF>=RES_REF))),0)'
+    T10: '=IFERROR(COUNTA(UNIQUE(FILTER(BD_GRUPO,BD_PARCELADO="Sim",BD_MESREF>=RES_REF))),0)',
+    // Todas as faturas com gasto no mês já foram pagas? Então o card mostra as faturas em aberto (mês seguinte)
+    S11: 'Faturas do mês pagas',
+    T11: '=AND(COUNTIF(E14:E19,"✅*")>0,COUNTIFS(B14:B19,"<>",D14:D19,">0",E14:E19,"<>✅ Paga")=0)'
   };
   Object.keys(aux).forEach(a1 => escrever_(sh, a1, aux[a1]));
   sh.getRange('T1:T3').setNumberFormat(FORMATO_DATA);
@@ -752,8 +755,9 @@ function montarResumo_(sh, shCfg) {
   card_(sh, 4, 14, 17, '📈 VALOR INVESTIDO', '=SUMIFS(BD_VALOR,BD_TIPO,"Investimento",BD_MESREF,RES_REF)',
     '="Taxa de investimento: "&FIXED(IFERROR(KPI_INVESTIDO/KPI_ENTRADAS,0)*100,1)&"% da renda"', COR.PESSEGO, FORMATO_MOEDA);
   card_(sh, 8, 2, 4, '💳 FATURA DO CARTÃO',
-    '=SUMIFS(BD_VALOR,BD_FORMA,"Crédito",BD_TIPO,"Despesa",BD_MESREF,RES_REF)',
-    '="Faturas que vencem neste mês"', COR.BLUSH, FORMATO_MOEDA);
+    '=SUMIFS(BD_VALOR,BD_FORMA,"Crédito",BD_TIPO,"Despesa",BD_MESREF,IF(T11,EDATE(RES_REF,1),RES_REF))',
+    '=IF(T11,"✅ Faturas do mês pagas • em aberto: "&TEXT(EDATE(RES_REF,1),"mmm/yyyy"),"Faturas que vencem neste mês")',
+    COR.BLUSH, FORMATO_MOEDA);
   card_(sh, 8, 5, 8, '🧾 PARCELAS FUTURAS', '=SUMIFS(BD_VALOR,BD_PARCELADO,"Sim",BD_MESREF,">"&RES_REF)',
     '=T10&" compra(s) parcelada(s) ativa(s)"', COR.LAVANDA_CLARA, FORMATO_MOEDA);
   card_(sh, 8, 10, 13, '✅ CONTAS FIXAS', '=COUNTIF(P14:P25,"✅*")&" de "&COUNTA(J14:J25)&" pagas"',

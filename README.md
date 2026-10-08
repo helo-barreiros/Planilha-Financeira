@@ -76,6 +76,7 @@ Para instalar uma versão nova do código, cole os arquivos atualizados no Apps 
 - No Resumo, marque **✔ Paga?** no cartão quando pagar a fatura. Duas coisas acontecem:
   - as compras daquela fatura passam para "Pago" e o limite é liberado;
   - é criada uma **Transferência** "Pagamento de fatura", que **não** conta como gasto de novo.
+- Quando **todas** as faturas do mês estão pagas, o card **Fatura do cartão** passa a mostrar a soma das faturas **em aberto** (as que vencem no mês seguinte), para você acompanhar o que já está gastando.
 
 ### ✅ Contas fixas
 - O checklist do Resumo lista as contas fixas cadastradas em Configurações.
